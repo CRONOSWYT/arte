@@ -1,4 +1,3 @@
-
 const { Client, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const express = require('express');
@@ -11,7 +10,7 @@ const client = new Client({
 });
 
 const token = process.env.BOT_TOKEN;
-const canalId = '1370460199520833606'; // Reemplaza con el ID del canal donde se envían los archivos
+const canalId = ''; // Reemplaza con el ID del canal donde se envían los archivos
 
 // ==== Configuración del almacenamiento con nombre original ====
 const storage = multer.diskStorage({
@@ -19,8 +18,7 @@ const storage = multer.diskStorage({
     cb(null, 'uploads/');
   },
   filename: function (req, file, cb) {
-    // Se asegura de mantener el nombre original
-    cb(null, file.originalname);
+    cb(null, file.originalname); // Mantiene el nombre original del archivo
   }
 });
 
@@ -33,7 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // ==== Ruta para subir archivos desde un formulario web ====
 app.post('/upload', upload.single('archivo'), (req, res) => {
-  const { nombre, grado } = req.body;
+  const { nombre, grado, titulo, comentario } = req.body;
   const file = req.file;
 
   if (!file) {
@@ -43,8 +41,12 @@ app.post('/upload', upload.single('archivo'), (req, res) => {
   const channel = client.channels.cache.get(canalId);
 
   if (channel) {
+    const message = `📌 **${titulo || 'Entrega sin título'}**\n👤 **Nombre:** ${nombre}\n🎓 **Grado:** ${grado}${
+      comentario ? `\n💬 **Comentario:** ${comentario}` : ''
+    }`;
+
     channel.send({
-      content: `📎 **Archivo subido por ${nombre} (Grado: ${grado})**`,
+      content: message,
       files: [path.join(__dirname, file.path)]
     }).then(() => {
       res.send('✅ Archivo enviado correctamente a Discord.');
@@ -57,29 +59,31 @@ app.post('/upload', upload.single('archivo'), (req, res) => {
   }
 });
 
-// ==== Comando para subir archivo a Discord a través del bot ====
+// ==== Comando para subir archivo desde Discord ====
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
   if (message.content.startsWith('!subir')) {
-    const args = message.content.slice('!subir'.length).trim().split(';');
+    const partes = message.content.slice('!subir'.length).trim().split(';');
 
-    if (args.length < 2) {
-      return message.channel.send('❌ Formato incorrecto. Usa: `!subir nombre;grado` y adjunta un archivo.');
+    if (partes.length < 3) {
+      return message.channel.send('❌ Formato incorrecto. Usa: `!subir nombre;grado;titulo;comentario (opcional)` y adjunta un archivo.');
     }
 
-    const username = args[0].trim();
-    const grade = args[1].trim();
+    const username = partes[0].trim();
+    const grade = partes[1].trim();
+    const titulo = partes[2].trim();
+    const comentario = partes[3] ? partes[3].trim() : null;
 
     if (message.attachments.size > 0) {
       const attachment = message.attachments.first();
 
       const embed = {
-        title: `📁 Nuevo archivo subido por ${username}`,
+        title: `📌 ${titulo || 'Entrega sin título'}`,
         description: `**Grado:** ${grade}`,
         fields: [
           { name: 'Nombre', value: username },
-          { name: 'Grado', value: grade },
+          ...(comentario ? [{ name: 'Comentario', value: comentario }] : []),
           { name: 'Archivo', value: `[Haz clic aquí para descargar el archivo](${attachment.url})` }
         ],
         color: 0x00ff00
