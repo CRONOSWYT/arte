@@ -1,30 +1,39 @@
 
-const { Client, Intents } = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
 
-// Configuración del bot de Discord
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
-const token = 'MTM3MDQ1NTQxMTczNTY2MjY1Mw.GzlE1x.nMKag9w2-jWKxE53jRmXntjEl0vfYl6ePSfOHM';  // Reemplaza con el token de tu bot
+// ==== Configuración del bot de Discord ====
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+});
 
-// Configuración del servidor web Express
+const token = 'MTM3MDQ1NTQxMTczNTY2MjY1Mw.GzlE1x.nMKag9w2-jWKxE53jRmXntjEl0vfYl6ePSfOHM'; // Reemplaza con el token de tu bot
+const canalId = '1370460199520833606'; // Reemplaza con el ID del canal donde se envían los archivos
+
+// ==== Configuración del servidor web Express ====
 const app = express();
-const upload = multer({ dest: 'uploads/' });  // Carpeta donde se guardarán los archivos subidos
+const upload = multer({ dest: 'uploads/' }); // Carpeta donde se guardan los archivos subidos
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Comando para subir archivo a Discord a través del bot
+// ==== Comando para subir archivo a Discord a través del bot ====
 client.on('messageCreate', async message => {
+  if (message.author.bot) return;
+
   if (message.content.startsWith('!subir')) {
     const args = message.content.slice('!subir'.length).trim().split(';');
-    const username = args[0].trim(); // Nombre del usuario
-    const grade = args[1].trim();    // Grado del usuario
-    const fileUrl = args[2].trim();  // URL del archivo (si es necesario)
 
-    // Verifica si hay archivo adjunto
+    if (args.length < 2) {
+      return message.channel.send('Formato incorrecto. Usa: `!subir nombre;grado` y adjunta un archivo.');
+    }
+
+    const username = args[0].trim();
+    const grade = args[1].trim();
+
     if (message.attachments.size > 0) {
       const attachment = message.attachments.first();
 
@@ -39,18 +48,20 @@ client.on('messageCreate', async message => {
         color: 0x00ff00
       };
 
-      const channel = message.guild.channels.cache.get('1370460199520833606'); // Reemplaza con el ID del canal
-      channel.send({ embeds: [embed] });
-
-      // Confirmación de subida
-      message.channel.send('¡Archivo subido con éxito!');
+      const channel = message.guild.channels.cache.get(canalId);
+      if (channel) {
+        await channel.send({ embeds: [embed] });
+        message.channel.send('¡Archivo subido con éxito!');
+      } else {
+        message.channel.send('No se encontró el canal de destino.');
+      }
     } else {
       message.channel.send('Por favor, adjunta un archivo al mensaje.');
     }
   }
 });
 
-// Ruta para el formulario de subida de archivos
+// ==== Ruta para subir archivos desde un formulario web ====
 app.post('/upload', upload.single('archivo'), (req, res) => {
   const { nombre, grado } = req.body;
   const file = req.file;
@@ -59,28 +70,27 @@ app.post('/upload', upload.single('archivo'), (req, res) => {
     return res.status(400).send('No se ha subido ningún archivo.');
   }
 
-  const canalId = '1370460199520833606';  // Reemplaza con el ID de tu canal de Discord
   const channel = client.channels.cache.get(canalId);
 
   if (channel) {
     channel.send({
       content: `Archivo subido por ${nombre} (Grado: ${grado})`,
-      files: [path.join(__dirname, file.path)] // Ruta del archivo subido
+      files: [path.join(__dirname, file.path)]
     }).then(() => {
       res.send('Archivo enviado correctamente a Discord.');
     }).catch(err => {
-      res.status(500).send('Hubo un error al enviar el archivo.');
       console.error(err);
+      res.status(500).send('Hubo un error al enviar el archivo.');
     });
   } else {
     res.status(404).send('Canal no encontrado.');
   }
 });
 
-// Iniciar el servidor Express
+// ==== Iniciar servidor Express ====
 app.listen(3000, () => {
   console.log('Servidor Express corriendo en http://localhost:3000');
 });
 
-// Iniciar el bot de Discord
+// ==== Iniciar el bot ====
 client.login(token);
