@@ -1,19 +1,13 @@
 {
-  "name": "subida-archivos",
+  "name": "discord-bot",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Bot de Discord",
+  "main": "bot.js", // Aquí debería estar tu archivo principal (por ejemplo, bot.js)
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node bot.js" // Asegúrate de que el nombre del archivo principal sea correcto
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "@cloudflare/d1": "^1.4.1",
-    "discord.js": "^14.19.3",
-    "express": "^5.1.0",
-    "multer": "^1.4.5-lts.2",
-    "node-fetch": "^3.3.2"
+    "discord.js": "^14.0.0",  // Asegúrate de tener discord.js u otras dependencias necesarias
+    "fs": "^0.0.1"
   }
 }
