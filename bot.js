@@ -4,108 +4,101 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 
-// ==== Configuración del bot de Discord ====
+// ==== Configurar Discord Bot ====
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
 const token = process.env.BOT_TOKEN;
-const canalId = ''; // Reemplaza con el ID del canal donde se envían los archivos
+const canalId = '1370460199520833606'; // ID del canal de destino
 
-// ==== Configuración del almacenamiento con nombre original ====
+// ==== Asegurar que la carpeta 'uploads/' exista ====
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+// ==== Configurar Multer (almacenamiento con nombre original) ====
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/');
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    cb(null, file.originalname); // Mantiene el nombre original del archivo
+    cb(null, file.originalname);
   }
 });
-
 const upload = multer({ storage });
 
-// ==== Configuración del servidor web Express ====
+// ==== Configurar servidor Express ====
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ==== Ruta para subir archivos desde un formulario web ====
-app.post('/upload', upload.single('archivo'), (req, res) => {
+// ==== Ruta para subir archivos desde formulario web ====
+app.post('/upload', upload.single('archivo'), async (req, res) => {
   const { nombre, grado, titulo, comentario } = req.body;
   const file = req.file;
 
   if (!file) {
-    return res.status(400).send('No se ha subido ningún archivo.');
+    return res.status(400).send('❌ No se ha subido ningún archivo.');
   }
 
   const channel = client.channels.cache.get(canalId);
+  if (!channel) return res.status(404).send('❌ Canal no encontrado.');
 
-  if (channel) {
-    const message = `📌 **${titulo || 'Entrega sin título'}**\n👤 **Nombre:** ${nombre}\n🎓 **Grado:** ${grado}${
-      comentario ? `\n💬 **Comentario:** ${comentario}` : ''
-    }`;
-
-    channel.send({
-      content: message,
-      files: [path.join(__dirname, file.path)]
-    }).then(() => {
-      res.send('✅ Archivo enviado correctamente a Discord.');
-    }).catch(err => {
-      console.error(err);
-      res.status(500).send('❌ Hubo un error al enviar el archivo.');
+  try {
+    await channel.send({
+      content: `📤 **${titulo || 'Archivo sin título'}**\n👤 Subido por: ${nombre} (Grado: ${grado})\n📝 ${comentario || 'Sin comentarios.'}`,
+      files: [path.resolve(file.path)]
     });
-  } else {
-    res.status(404).send('❌ Canal no encontrado.');
+
+    res.send('✅ Archivo enviado correctamente a Discord.');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('❌ Hubo un error al enviar el archivo.');
   }
 });
 
-// ==== Comando para subir archivo desde Discord ====
+// ==== Comando para subir archivos desde Discord ====
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
+  if (!message.content.startsWith('!subir')) return;
 
-  if (message.content.startsWith('!subir')) {
-    const partes = message.content.slice('!subir'.length).trim().split(';');
+  const args = message.content.slice('!subir'.length).trim().split(';');
+  if (args.length < 2) {
+    return message.channel.send('❌ Formato incorrecto. Usa: `!subir nombre;grado;[título];[comentario]` y adjunta un archivo.');
+  }
 
-    if (partes.length < 3) {
-      return message.channel.send('❌ Formato incorrecto. Usa: `!subir nombre;grado;titulo;comentario (opcional)` y adjunta un archivo.');
-    }
+  const [username, grade, titulo = 'Archivo sin título', comentario = 'Sin comentarios.'] = args.map(arg => arg.trim());
 
-    const username = partes[0].trim();
-    const grade = partes[1].trim();
-    const titulo = partes[2].trim();
-    const comentario = partes[3] ? partes[3].trim() : null;
+  if (message.attachments.size === 0) {
+    return message.channel.send('❌ Por favor, adjunta un archivo al mensaje.');
+  }
 
-    if (message.attachments.size > 0) {
-      const attachment = message.attachments.first();
+  const attachment = message.attachments.first();
+  const embed = {
+    title: `📁 ${titulo}`,
+    description: `**Grado:** ${grade}\n📝 ${comentario}`,
+    fields: [
+      { name: 'Nombre', value: username },
+      { name: 'Archivo', value: `[Haz clic aquí para descargar](${attachment.url})` }
+    ],
+    color: 0x00ff00
+  };
 
-      const embed = {
-        title: `📌 ${titulo || 'Entrega sin título'}`,
-        description: `**Grado:** ${grade}`,
-        fields: [
-          { name: 'Nombre', value: username },
-          ...(comentario ? [{ name: 'Comentario', value: comentario }] : []),
-          { name: 'Archivo', value: `[Haz clic aquí para descargar el archivo](${attachment.url})` }
-        ],
-        color: 0x00ff00
-      };
-
-      const channel = message.guild.channels.cache.get(canalId);
-      if (channel) {
-        await channel.send({ embeds: [embed] });
-        message.channel.send('✅ ¡Archivo subido con éxito!');
-      } else {
-        message.channel.send('❌ No se encontró el canal de destino.');
-      }
-    } else {
-      message.channel.send('❌ Por favor, adjunta un archivo al mensaje.');
-    }
+  const channel = message.guild.channels.cache.get(canalId);
+  if (channel) {
+    await channel.send({ embeds: [embed] });
+    message.channel.send('✅ ¡Archivo subido con éxito!');
+  } else {
+    message.channel.send('❌ No se encontró el canal de destino.');
   }
 });
 
-// ==== Iniciar servidor Express ====
+// ==== Iniciar Express Server ====
 app.listen(3000, () => {
-  console.log('Servidor Express corriendo en http://localhost:3000');
+  console.log('🌐 Servidor Express corriendo en http://localhost:3000');
 });
 
-// ==== Iniciar el bot ====
+// ==== Iniciar Bot ====
 client.login(token);
