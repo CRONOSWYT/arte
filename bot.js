@@ -10,7 +10,7 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
-const token = 'MTM3MDQ1NTQxMTczNTY2MjY1Mw.GzlE1x.nMKag9w2-jWKxE53jRmXntjEl0vfYl6ePSfOHM'; // Reemplaza con el token de tu bot
+const token = process.env.BOT_TOKEN;
 const canalId = '1370460199520833606'; // Reemplaza con el ID del canal donde se envían los archivos
 
 // ==== Configuración del servidor web Express ====
