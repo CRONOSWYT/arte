@@ -2,12 +2,12 @@
   "name": "discord-bot",
   "version": "1.0.0",
   "description": "Bot de Discord",
-  "main": "bot.js", // Aquí debería estar tu archivo principal (por ejemplo, bot.js)
+  "main": "bot.js",
   "scripts": {
-    "start": "node bot.js" // Asegúrate de que el nombre del archivo principal sea correcto
+    "start": "node bot.js"
   },
   "dependencies": {
-    "discord.js": "^14.0.0",  // Asegúrate de tener discord.js u otras dependencias necesarias
+    "discord.js": "^14.0.0",
     "fs": "^0.0.1"
   }
 }
