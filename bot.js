@@ -39,15 +39,18 @@ const client = new Client({
   ]
 });
 
+// Comando: !subir desde Discord
 client.on('messageCreate', async message => {
   if (message.author.bot || !message.content.startsWith('!subir')) return;
 
   const args = message.content.slice('!subir'.length).trim().split(';');
-  if (args.length < 2) {
-    return message.channel.send('❌ Formato incorrecto. Usa: `!subir nombre;grado;[título];[comentario]` y adjunta un archivo.');
+  if (args.length < 1) {
+    return message.channel.send('❌ Formato incorrecto. Usa: `!subir grado;[título];[comentario]` y adjunta un archivo.');
   }
 
-  const [username, grade, titulo = 'Archivo sin título', comentario = 'Sin comentarios.'] = args.map(arg => arg.trim());
+  // Obtener el nombre de usuario de Discord automáticamente
+  const username = message.author.username;
+  const [grade, titulo = 'Archivo sin título', comentario = 'Sin comentarios.'] = args.map(arg => arg.trim());
 
   if (message.attachments.size === 0) {
     return message.channel.send('❌ Por favor, adjunta un archivo al mensaje.');
@@ -80,7 +83,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Ruta para subir desde formulario (si lo usas desde otra app)
+// Ruta para subir archivos desde un formulario web
 app.post('/upload', upload.single('archivo'), async (req, res) => {
   const { nombre, grado, titulo, comentario } = req.body;
   const file = req.file;
