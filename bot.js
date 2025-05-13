@@ -34,6 +34,14 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// **Servir el archivo HTML desde la carpeta 'public'**
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Ruta para mostrar el HTML cuando se accede a la raíz
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // ==== Ruta para subir archivos desde formulario web ====
 app.post('/upload', upload.single('archivo'), async (req, res) => {
   const { nombre, grado, titulo, comentario } = req.body;
