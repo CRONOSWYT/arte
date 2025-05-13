@@ -15,13 +15,13 @@ const canalId = '1370460199520833606';
 const uploadDir = path.join(__dirname, 'uploads');
 const publicDir = path.join(__dirname, 'public');
 
-// Asegurar carpeta 'uploads/'
+// Crear carpeta 'uploads/' si no existe
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
 
 // ========================
-// CONFIGURAR MULTER
+// CONFIGURAR MULTER (subida de archivos)
 // ========================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
@@ -40,7 +40,7 @@ const client = new Client({
   ]
 });
 
-// Manejo de comando !subir desde Discord
+// Comando: !subir desde Discord
 client.on('messageCreate', async message => {
   if (message.author.bot || !message.content.startsWith('!subir')) return;
 
@@ -81,16 +81,14 @@ client.on('messageCreate', async message => {
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Servir archivos estáticos (HTML, CSS, JS)
 app.use(express.static(publicDir));
 
-// Ruta principal para servir index.html
+// Ruta principal: servir index.html (si quieres usarlo localmente)
 app.get('/', (req, res) => {
-  res.sendFile(path.join(publicDir, 'index.html'));
+  res.redirect('https://world-time-9ux.pages.dev/s');
 });
 
-// Ruta para subir archivos desde el formulario
+// Ruta de subida desde formulario web
 app.post('/upload', upload.single('archivo'), async (req, res) => {
   const { nombre, grado, titulo, comentario } = req.body;
   const file = req.file;
@@ -113,8 +111,13 @@ app.post('/upload', upload.single('archivo'), async (req, res) => {
   }
 });
 
+// Redirección por defecto a la página externa
+app.get('*', (req, res) => {
+  res.redirect('https://world-time-9ux.pages.dev/s');
+});
+
 // ========================
-// INICIAR SERVIDOR WEB
+// INICIAR SERVIDOR EXPRESS
 // ========================
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
